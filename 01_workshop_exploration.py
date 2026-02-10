@@ -692,11 +692,82 @@ else:
 # MAGIC
 # MAGIC Genie allows users to ask questions about their data in natural language.
 # MAGIC It can generate SQL queries and provide insights from your tables.
+# MAGIC
+# MAGIC First, we'll create a sample sales dataset as a Delta table. You can then
+# MAGIC create a **Genie Space** on top of this table in the Databricks UI:
+# MAGIC 1. Go to the **Genie** tab in the left sidebar
+# MAGIC 2. Click **New** and select the table created below
+# MAGIC 3. Copy the Genie Space ID into your `config.json`
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 4.1 Create a Genie Agent
+# MAGIC ### 4.1 Create a Sample Sales Table for Genie
+
+# COMMAND ----------
+
+# DBTITLE 1,Create Sample Sales Data
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType, DateType
+from datetime import date
+
+# Sample sales data
+sales_data = [
+    ("2025-01-05", "Laptop",       "Electronics", "Germany",  2, 1299.99, "Alice"),
+    ("2025-01-08", "Headphones",   "Electronics", "Austria",  5,   89.99, "Bob"),
+    ("2025-01-12", "Desk Chair",   "Furniture",   "Germany",  1,  449.00, "Alice"),
+    ("2025-01-15", "Monitor",      "Electronics", "Poland",   3,  349.99, "Charlie"),
+    ("2025-01-20", "Keyboard",     "Electronics", "Germany",  10,  69.99, "Bob"),
+    ("2025-02-01", "Standing Desk","Furniture",   "Austria",  1,  799.00, "Alice"),
+    ("2025-02-05", "Webcam",       "Electronics", "Poland",   4,   59.99, "Charlie"),
+    ("2025-02-10", "Laptop",       "Electronics", "Germany",  1, 1299.99, "Bob"),
+    ("2025-02-14", "Mouse",        "Electronics", "Austria",  8,   39.99, "Alice"),
+    ("2025-02-20", "Bookshelf",    "Furniture",   "Germany",  2,  189.00, "Charlie"),
+    ("2025-03-01", "Tablet",       "Electronics", "Poland",   3,  499.99, "Alice"),
+    ("2025-03-05", "Desk Lamp",    "Furniture",   "Germany",  6,   45.00, "Bob"),
+    ("2025-03-10", "Laptop",       "Electronics", "Austria",  2, 1299.99, "Charlie"),
+    ("2025-03-15", "Headphones",   "Electronics", "Germany",  4,   89.99, "Alice"),
+    ("2025-03-20", "Office Chair", "Furniture",   "Poland",   2,  549.00, "Bob"),
+    ("2025-04-01", "Monitor",      "Electronics", "Germany",  2,  349.99, "Charlie"),
+    ("2025-04-08", "Keyboard",     "Electronics", "Austria",  7,   69.99, "Alice"),
+    ("2025-04-12", "Webcam",       "Electronics", "Germany",  3,   59.99, "Bob"),
+    ("2025-04-18", "Standing Desk","Furniture",   "Poland",   1,  799.00, "Alice"),
+    ("2025-04-25", "Tablet",       "Electronics", "Germany",  2,  499.99, "Charlie"),
+]
+
+schema = StructType([
+    StructField("order_date", StringType(), False),
+    StructField("product", StringType(), False),
+    StructField("category", StringType(), False),
+    StructField("country", StringType(), False),
+    StructField("quantity", IntegerType(), False),
+    StructField("unit_price", DoubleType(), False),
+    StructField("sales_rep", StringType(), False),
+])
+
+df = spark.createDataFrame(sales_data, schema)
+
+# Add computed columns
+from pyspark.sql.functions import col, to_date, round as spark_round
+df = (
+    df
+    .withColumn("order_date", to_date(col("order_date")))
+    .withColumn("total_amount", spark_round(col("quantity") * col("unit_price"), 2))
+)
+
+# Save as Delta table
+table_name = f"{CATALOG}.{SCHEMA}.workshop_sales"
+df.write.mode("overwrite").saveAsTable(table_name)
+
+print(f"✅ Created table: {table_name}")
+print(f"   Rows: {df.count()}")
+print(f"\n📌 Use this table to create a Genie Space in the Databricks UI,")
+print(f"   then paste the Genie Space ID into config.json")
+display(spark.table(table_name))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 4.2 Create a Genie Agent
 
 # COMMAND ----------
 
