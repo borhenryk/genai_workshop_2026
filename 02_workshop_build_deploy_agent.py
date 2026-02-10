@@ -130,13 +130,13 @@ print(f"\nAgent will be registered as: {get_full_model_name(config)}")
 # MAGIC # Update these values to match config.json.
 # MAGIC ############################################
 # MAGIC LLM_ENDPOINT_NAME = "databricks-gpt-oss-120b"
-# MAGIC LAKEBASE_INSTANCE_NAME = "workshop"
+# MAGIC LAKEBASE_INSTANCE_NAME = "lakebase_name"
 # MAGIC EMBEDDING_ENDPOINT = "databricks-bge-large-en"
 # MAGIC EMBEDDING_DIMS = 1024
-# MAGIC CATALOG = "users"
-# MAGIC SCHEMA = "henryk_borzymowski"
-# MAGIC VECTOR_SEARCH_ENDPOINT = "dbdemos_vs_endpoint"
-# MAGIC VECTOR_SEARCH_INDEX = f"{CATALOG}.{SCHEMA}.workshop_documents_index"
+# MAGIC CATALOG = "users_catalog"
+# MAGIC SCHEMA = "users_schema"
+# MAGIC VECTOR_SEARCH_ENDPOINT = "vs_endpoint"
+# MAGIC VECTOR_SEARCH_INDEX = f"{CATALOG}.{SCHEMA}.workshop_documents_index_users_name"
 # MAGIC
 # MAGIC SYSTEM_PROMPT = """You are a helpful AI assistant for a workshop on building agents with Databricks.
 # MAGIC
