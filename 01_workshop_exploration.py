@@ -7,9 +7,10 @@
 # MAGIC
 # MAGIC 1. **Unity Catalog Functions** - Register and use custom Python functions as agent tools
 # MAGIC 2. **Vector Search** - Create and query vector search indexes for RAG
-# MAGIC 3. **MCP Servers** - Connect to managed and custom MCP servers
-# MAGIC 4. **Genie Agent** - Query structured data with natural language
-# MAGIC 5. **Lakebase Memory** - Short-term and long-term agent memory
+# MAGIC 3. **Sample Sales Data** - Create a Delta table for Genie
+# MAGIC 4. **MCP Servers** - Connect to managed and custom MCP servers
+# MAGIC 5. **Genie Agent** - Query structured data with natural language
+# MAGIC 6. **Lakebase Memory** - Short-term and long-term agent memory
 # MAGIC
 # MAGIC Each section is self-contained so you can run cells independently to understand each component.
 # MAGIC
@@ -496,7 +497,79 @@ answer = rag_chain.invoke(question)
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC # Section 3: MCP Servers
+# MAGIC # Section 3: Create a Sample Sales Table for Genie
+# MAGIC
+# MAGIC Before exploring MCP servers and the Genie Agent, we need a Delta table
+# MAGIC to create a **Genie Space** from. After running the cell below:
+# MAGIC 1. Go to the **Genie** tab in the left sidebar
+# MAGIC 2. Click **New** and select the `workshop_sales` table
+# MAGIC 3. Copy the Genie Space ID into your `config.json`
+
+# COMMAND ----------
+
+# DBTITLE 1,Create Sample Sales Data
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType, DateType
+from pyspark.sql.functions import col, to_date, round as spark_round
+from datetime import date
+
+# Sample sales data
+sales_data = [
+    ("2025-01-05", "Laptop",       "Electronics", "Germany",  2, 1299.99, "Alice"),
+    ("2025-01-08", "Headphones",   "Electronics", "Austria",  5,   89.99, "Bob"),
+    ("2025-01-12", "Desk Chair",   "Furniture",   "Germany",  1,  449.00, "Alice"),
+    ("2025-01-15", "Monitor",      "Electronics", "Poland",   3,  349.99, "Charlie"),
+    ("2025-01-20", "Keyboard",     "Electronics", "Germany",  10,  69.99, "Bob"),
+    ("2025-02-01", "Standing Desk","Furniture",   "Austria",  1,  799.00, "Alice"),
+    ("2025-02-05", "Webcam",       "Electronics", "Poland",   4,   59.99, "Charlie"),
+    ("2025-02-10", "Laptop",       "Electronics", "Germany",  1, 1299.99, "Bob"),
+    ("2025-02-14", "Mouse",        "Electronics", "Austria",  8,   39.99, "Alice"),
+    ("2025-02-20", "Bookshelf",    "Furniture",   "Germany",  2,  189.00, "Charlie"),
+    ("2025-03-01", "Tablet",       "Electronics", "Poland",   3,  499.99, "Alice"),
+    ("2025-03-05", "Desk Lamp",    "Furniture",   "Germany",  6,   45.00, "Bob"),
+    ("2025-03-10", "Laptop",       "Electronics", "Austria",  2, 1299.99, "Charlie"),
+    ("2025-03-15", "Headphones",   "Electronics", "Germany",  4,   89.99, "Alice"),
+    ("2025-03-20", "Office Chair", "Furniture",   "Poland",   2,  549.00, "Bob"),
+    ("2025-04-01", "Monitor",      "Electronics", "Germany",  2,  349.99, "Charlie"),
+    ("2025-04-08", "Keyboard",     "Electronics", "Austria",  7,   69.99, "Alice"),
+    ("2025-04-12", "Webcam",       "Electronics", "Germany",  3,   59.99, "Bob"),
+    ("2025-04-18", "Standing Desk","Furniture",   "Poland",   1,  799.00, "Alice"),
+    ("2025-04-25", "Tablet",       "Electronics", "Germany",  2,  499.99, "Charlie"),
+]
+
+schema = StructType([
+    StructField("order_date", StringType(), False),
+    StructField("product", StringType(), False),
+    StructField("category", StringType(), False),
+    StructField("country", StringType(), False),
+    StructField("quantity", IntegerType(), False),
+    StructField("unit_price", DoubleType(), False),
+    StructField("sales_rep", StringType(), False),
+])
+
+df = spark.createDataFrame(sales_data, schema)
+
+# Add computed columns
+df = (
+    df
+    .withColumn("order_date", to_date(col("order_date")))
+    .withColumn("total_amount", spark_round(col("quantity") * col("unit_price"), 2))
+)
+
+# Save as Delta table
+table_name = f"{CATALOG}.{SCHEMA}.workshop_sales"
+df.write.mode("overwrite").saveAsTable(table_name)
+
+print(f"✅ Created table: {table_name}")
+print(f"   Rows: {df.count()}")
+print(f"\n📌 Use this table to create a Genie Space in the Databricks UI,")
+print(f"   then paste the Genie Space ID into config.json")
+display(spark.table(table_name))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ---
+# MAGIC # Section 4: MCP Servers
 # MAGIC
 # MAGIC Model Context Protocol (MCP) servers provide standardized tool interfaces.
 # MAGIC Databricks supports both managed MCP servers (like Genie) and custom MCP servers.
@@ -504,7 +577,7 @@ answer = rag_chain.invoke(question)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 3.1 Connect to a Managed MCP Server (Genie)
+# MAGIC ### 4.1 Connect to a Managed MCP Server (Genie)
 
 # COMMAND ----------
 
@@ -540,7 +613,7 @@ else:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 3.2 Call a Genie MCP Tool
+# MAGIC ### 4.2 Call a Genie MCP Tool
 
 # COMMAND ----------
 
@@ -688,86 +761,17 @@ else:
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC # Section 4: Genie Agent for Natural Language Data Queries
+# MAGIC # Section 5: Genie Agent for Natural Language Data Queries
 # MAGIC
 # MAGIC Genie allows users to ask questions about their data in natural language.
 # MAGIC It can generate SQL queries and provide insights from your tables.
-# MAGIC
-# MAGIC First, we'll create a sample sales dataset as a Delta table. You can then
-# MAGIC create a **Genie Space** on top of this table in the Databricks UI:
-# MAGIC 1. Go to the **Genie** tab in the left sidebar
-# MAGIC 2. Click **New** and select the table created below
-# MAGIC 3. Copy the Genie Space ID into your `config.json`
+# MAGIC We already created the `workshop_sales` table in Section 3 — make sure
+# MAGIC you have a Genie Space set up on it before proceeding.
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 4.1 Create a Sample Sales Table for Genie
-
-# COMMAND ----------
-
-# DBTITLE 1,Create Sample Sales Data
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType, DateType
-from datetime import date
-
-# Sample sales data
-sales_data = [
-    ("2025-01-05", "Laptop",       "Electronics", "Germany",  2, 1299.99, "Alice"),
-    ("2025-01-08", "Headphones",   "Electronics", "Austria",  5,   89.99, "Bob"),
-    ("2025-01-12", "Desk Chair",   "Furniture",   "Germany",  1,  449.00, "Alice"),
-    ("2025-01-15", "Monitor",      "Electronics", "Poland",   3,  349.99, "Charlie"),
-    ("2025-01-20", "Keyboard",     "Electronics", "Germany",  10,  69.99, "Bob"),
-    ("2025-02-01", "Standing Desk","Furniture",   "Austria",  1,  799.00, "Alice"),
-    ("2025-02-05", "Webcam",       "Electronics", "Poland",   4,   59.99, "Charlie"),
-    ("2025-02-10", "Laptop",       "Electronics", "Germany",  1, 1299.99, "Bob"),
-    ("2025-02-14", "Mouse",        "Electronics", "Austria",  8,   39.99, "Alice"),
-    ("2025-02-20", "Bookshelf",    "Furniture",   "Germany",  2,  189.00, "Charlie"),
-    ("2025-03-01", "Tablet",       "Electronics", "Poland",   3,  499.99, "Alice"),
-    ("2025-03-05", "Desk Lamp",    "Furniture",   "Germany",  6,   45.00, "Bob"),
-    ("2025-03-10", "Laptop",       "Electronics", "Austria",  2, 1299.99, "Charlie"),
-    ("2025-03-15", "Headphones",   "Electronics", "Germany",  4,   89.99, "Alice"),
-    ("2025-03-20", "Office Chair", "Furniture",   "Poland",   2,  549.00, "Bob"),
-    ("2025-04-01", "Monitor",      "Electronics", "Germany",  2,  349.99, "Charlie"),
-    ("2025-04-08", "Keyboard",     "Electronics", "Austria",  7,   69.99, "Alice"),
-    ("2025-04-12", "Webcam",       "Electronics", "Germany",  3,   59.99, "Bob"),
-    ("2025-04-18", "Standing Desk","Furniture",   "Poland",   1,  799.00, "Alice"),
-    ("2025-04-25", "Tablet",       "Electronics", "Germany",  2,  499.99, "Charlie"),
-]
-
-schema = StructType([
-    StructField("order_date", StringType(), False),
-    StructField("product", StringType(), False),
-    StructField("category", StringType(), False),
-    StructField("country", StringType(), False),
-    StructField("quantity", IntegerType(), False),
-    StructField("unit_price", DoubleType(), False),
-    StructField("sales_rep", StringType(), False),
-])
-
-df = spark.createDataFrame(sales_data, schema)
-
-# Add computed columns
-from pyspark.sql.functions import col, to_date, round as spark_round
-df = (
-    df
-    .withColumn("order_date", to_date(col("order_date")))
-    .withColumn("total_amount", spark_round(col("quantity") * col("unit_price"), 2))
-)
-
-# Save as Delta table
-table_name = f"{CATALOG}.{SCHEMA}.workshop_sales"
-df.write.mode("overwrite").saveAsTable(table_name)
-
-print(f"✅ Created table: {table_name}")
-print(f"   Rows: {df.count()}")
-print(f"\n📌 Use this table to create a Genie Space in the Databricks UI,")
-print(f"   then paste the Genie Space ID into config.json")
-display(spark.table(table_name))
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### 4.2 Create a Genie Agent
+# MAGIC ### 5.1 Create a Genie Agent
 
 # COMMAND ----------
 
@@ -805,7 +809,7 @@ else:
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC # Section 5: Lakebase Memory
+# MAGIC # Section 6: Lakebase Memory
 # MAGIC
 # MAGIC Lakebase provides durable memory storage for agents:
 # MAGIC - **Short-term memory (Checkpoints)**: Conversation state within a thread
@@ -814,7 +818,7 @@ else:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 5.1 Setup Lakebase Tables
+# MAGIC ### 6.1 Setup Lakebase Tables
 
 # COMMAND ----------
 
@@ -841,7 +845,7 @@ else:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 5.2 Short-term Memory with CheckpointSaver
+# MAGIC ### 6.2 Short-term Memory with CheckpointSaver
 
 # COMMAND ----------
 
@@ -894,7 +898,7 @@ else:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 5.3 Long-term Memory with DatabricksStore
+# MAGIC ### 6.3 Long-term Memory with DatabricksStore
 
 # COMMAND ----------
 
@@ -1018,7 +1022,7 @@ else:
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC # Section 6: Complete Agent with Full Trace 🔍
+# MAGIC # Section 7: Complete Agent with Full Trace 🔍
 # MAGIC
 # MAGIC This is the culmination of everything we've learned. We'll create a complete agent
 # MAGIC that combines multiple tools and shows the full execution trace.
@@ -1026,7 +1030,7 @@ else:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 6.1 Create a Complete Multi-Tool Agent
+# MAGIC ### 7.1 Create a Complete Multi-Tool Agent
 
 # COMMAND ----------
 
@@ -1107,10 +1111,11 @@ agent.invoke({
 # MAGIC |---------|-----------|-------------|-------------|
 # MAGIC | 1 | **UC Functions** | `UCFunctionToolkit` | Tool binding & execution |
 # MAGIC | 2 | **Vector Search** | `VectorSearchRetrieverTool` | Retrieval + RAG chain |
-# MAGIC | 3 | **MCP Servers** | `DatabricksMCPClient` | MCP protocol calls |
-# MAGIC | 4 | **Genie Agent** | `GenieAgent` | Data query processing |
-# MAGIC | 5 | **Lakebase Memory** | `CheckpointSaver`, `DatabricksStore` | Memory operations |
-# MAGIC | 6 | **Complete Agent** | `StateGraph`, `ToolNode` | Full agent loop |
+# MAGIC | 3 | **Sample Sales Data** | Spark DataFrame, Delta | — |
+# MAGIC | 4 | **MCP Servers** | `DatabricksMCPClient` | MCP protocol calls |
+# MAGIC | 5 | **Genie Agent** | `GenieAgent` | Data query processing |
+# MAGIC | 6 | **Lakebase Memory** | `CheckpointSaver`, `DatabricksStore` | Memory operations |
+# MAGIC | 7 | **Complete Agent** | `StateGraph`, `ToolNode` | Full agent loop |
 # MAGIC
 # MAGIC ## 🔍 What You Learned About MLflow Traces
 # MAGIC
