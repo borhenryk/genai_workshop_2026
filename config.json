@@ -1,19 +1,19 @@
 {
     "_comment": "Workshop Configuration - Update these values for your environment",
     
-    "catalog": "users",
-    "schema": "henryk_borzymowski",
+    "catalog": "users_catalog",
+    "schema": "users_schema",
     
     "llm_endpoint_name": "databricks-gpt-oss-120b",
     
     "embedding_endpoint": "databricks-bge-large-en",
     "embedding_dims": 1024,
     
-    "vector_search_endpoint": "dbdemos_vs_endpoint",
+    "vector_search_endpoint": "vs_endpoint",
     
-    "lakebase_instance_name": "workshop",
+    "lakebase_instance_name": "lakebase_name",
     
-    "genie_space_id": "01f06df2f7b811ca92d95de566504104",
+    "genie_space_id": "",
     
     "model_name": "workshop-agent"
 }
