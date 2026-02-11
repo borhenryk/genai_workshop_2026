@@ -1,0 +1,13 @@
+# Databricks App Configuration
+# Set ENDPOINT_NAME to your serving endpoint
+command:
+  - "uvicorn"
+  - "main:app"
+  - "--host"
+  - "0.0.0.0"
+  - "--port"
+  - "8000"
+
+env:
+  - name: ENDPOINT_NAME
+    value: "agents_users-henryk_borzymowski-workshop-agent"

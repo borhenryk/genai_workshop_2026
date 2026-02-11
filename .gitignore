@@ -1,0 +1,13 @@
+node_modules/
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+dist/
+chat-ui/static/
+chat-ui/frontend/node_modules/
+.DS_Store
+.ai-dev-kit/
+.claude/
+.mcp.json
